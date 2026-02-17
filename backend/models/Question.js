@@ -1,0 +1,27 @@
+import mongoose from "mongoose";
+
+const questionSchema = new mongoose.Schema({
+  number: {
+    type: Number,
+    required: true,
+    unique: true
+  },
+
+  type: {
+    type: String,
+    enum: ["MCQ", "CASE_STUDY", "SHORT", "SCENARIO"],
+    required: true
+  },
+
+  questionText: {
+    type: String,
+    required: true
+  },
+
+  options: [String],
+
+  correctAnswer: String
+
+}, { timestamps: true });
+
+export default mongoose.model("Question", questionSchema);
