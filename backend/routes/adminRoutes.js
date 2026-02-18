@@ -7,26 +7,27 @@ const router = express.Router();
 /* DRAW NUMBER */
 router.post("/draw", protectAdmin, async (req, res) => {
   try {
-    const { number } = req.body;
 
-    if (!number || number < 1 || number > 90) {
-      return res.status(400).json({ message: "Invalid number" });
+    const allNumbers = Array.from({ length: 90 }, (_, i) => i + 1);
+
+    const drawn = await Draw.find().select("number");
+    const drawnSet = new Set(drawn.map(d => d.number));
+
+    const available = allNumbers.filter(n => !drawnSet.has(n));
+
+    if (available.length === 0) {
+      return res.status(400).json({ message: "All numbers drawn" });
     }
 
-    const alreadyDrawn = await Draw.findOne({ number });
-    if (alreadyDrawn) {
-      return res.status(400).json({ message: "Number already drawn" });
-    }
+    const randomIndex = Math.floor(Math.random() * available.length);
+    const number = available[randomIndex];
 
-    const newDraw = await Draw.create({ number });
+    await Draw.create({ number });
 
     const io = req.app.get("io");
     io.emit("numberDrawn", number);
 
-    res.json({
-      message: "Number broadcasted",
-      number: newDraw.number
-    });
+    res.json({ number });
 
   } catch (err) {
     res.status(500).json({ message: "Server error" });
@@ -40,6 +41,30 @@ router.get("/drawn", protectAdmin, async (req, res) => {
     res.json(draws);
   } catch (err) {
     res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.delete("/reset", protectAdmin, async (req, res) => {
+  try {
+
+    console.log("RESET ROUTE HIT");
+
+    await Draw.deleteMany({});
+
+    const io = req.app.get("io");
+    io.emit("gameReset");
+
+    res.status(200).json({
+      success: true,
+      message: "Game reset successfully"
+    });
+
+  } catch (err) {
+    console.error("Reset Error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Reset failed"
+    });
   }
 });
 
