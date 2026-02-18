@@ -1,15 +1,25 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import API, { setAuthToken } from "../services/api";
 
 const AdminLogin = ({ onLogin }) => {
 
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
+    if (!email || !password) {
+      return alert("Enter email and password");
+    }
+
     try {
+      setLoading(true);
+
       const res = await API.post("/auth/login", { email, password });
 
       const token = res.data.token;
@@ -19,8 +29,14 @@ const AdminLogin = ({ onLogin }) => {
 
       onLogin();
 
+      // 🔥 Important redirect
+      navigate("/admin", { replace: true });
+
     } catch (err) {
-      alert("Login failed");
+      console.log("LOGIN ERROR:", err.response);
+      alert(err.response?.data?.message || "Login failed");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -52,9 +68,10 @@ const AdminLogin = ({ onLogin }) => {
 
         <button
           type="submit"
-          className="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded text-white"
+          disabled={loading}
+          className="w-full bg-blue-600 hover:bg-blue-700 p-2 rounded text-white disabled:opacity-50"
         >
-          Login
+          {loading ? "Logging in..." : "Login"}
         </button>
       </form>
     </div>
