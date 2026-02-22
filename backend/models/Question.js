@@ -9,7 +9,7 @@ const questionSchema = new mongoose.Schema({
 
   type: {
     type: String,
-    enum: ["MCQ", "CASE_STUDY", "SHORT", "SCENARIO"],
+    enum: ["MCQ", "CASE", "CODING"],
     required: true
   },
 
@@ -20,7 +20,21 @@ const questionSchema = new mongoose.Schema({
 
   options: [String],
 
-  correctAnswer: String
+  correctAnswer: String,
+
+  testCases: [
+    {
+      input: String,
+      expectedOutput: String
+    }
+  ],
+
+  hiddenTestCases: [
+    {
+      input: String,
+      expectedOutput: String
+    }
+  ]
 
 }, { timestamps: true });
 

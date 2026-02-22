@@ -1,15 +1,23 @@
 import { useEffect, useState } from "react";
 import socket from "../services/socket";
+import API from "../services/api";
+import QuestionModal from "../components/QuestionModal";
 
 const ParticipantDashboard = () => {
 
-  const stored = JSON.parse(localStorage.getItem("ticketData"));
+  const storedData = localStorage.getItem("ticketData");
+  const stored = storedData ? JSON.parse(storedData) : null;
 
   const [ticket] = useState(stored?.numbers || []);
   const [teamName] = useState(stored?.teamName || "");
   const [drawnNumbers, setDrawnNumbers] = useState(stored?.drawnNumbers || []);
   const [activeNumber, setActiveNumber] = useState(null);
 
+  const [selectedQuestion, setSelectedQuestion] = useState(null);
+  const [loadingQuestion, setLoadingQuestion] = useState(false);
+  const [rewardStatus, setRewardStatus] = useState(null);
+
+  // ---------------- SOCKET EVENTS ----------------
   useEffect(() => {
 
     socket.on("numberDrawn", (num) => {
@@ -23,6 +31,7 @@ const ParticipantDashboard = () => {
 
     socket.on("gameReset", () => {
       setDrawnNumbers([]);
+      setRewardStatus(null);
     });
 
     return () => {
@@ -32,20 +41,49 @@ const ParticipantDashboard = () => {
 
   }, []);
 
-  const handleNumberClick = (num) => {
+  // ---------------- FETCH QUESTION ----------------
+  const handleNumberClick = async (num) => {
+
     if (!drawnNumbers.includes(num)) return;
-    alert(`Open question panel for ${num}`);
+
+    try {
+      setLoadingQuestion(true);
+
+      const res = await API.get(`/questions/${num}`);
+      setSelectedQuestion(res.data);
+
+    } catch (err) {
+      alert("Failed to load question");
+    } finally {
+      setLoadingQuestion(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#3e2f1c] via-[#2a2116] to-black p-10">
 
+      {/* HEADER */}
       <div className="text-center mb-10">
         <h1 className="text-4xl font-bold text-[#e6c79c] tracking-wide">
           TEAM: {teamName}
         </h1>
       </div>
 
+      {/* REWARD STATUS PANEL */}
+      {rewardStatus && (
+        <div className="mb-8 text-center text-[#f5e6c8]">
+          <p>Early Five: {rewardStatus.earlyFive ? "Unlocked ✅" : "—"}</p>
+          <p>Corners: {rewardStatus.corners ? "Unlocked ✅" : "—"}</p>
+          <p>1st Line: {rewardStatus.firstLine ? "Unlocked ✅" : "—"}</p>
+          <p>2nd Line: {rewardStatus.secondLine ? "Unlocked ✅" : "—"}</p>
+          <p>3rd Line: {rewardStatus.thirdLine ? "Unlocked ✅" : "—"}</p>
+          {rewardStatus.fullHouseRank > 0 && (
+            <p>Full House Rank: {rewardStatus.fullHouseRank} 🏆</p>
+          )}
+        </div>
+      )}
+
+      {/* TICKET */}
       <div className="flex justify-center">
 
         <div
@@ -58,7 +96,7 @@ const ParticipantDashboard = () => {
           "
         >
 
-          {/* Column Labels */}
+          {/* COLUMN LABELS */}
           <div className="grid grid-cols-9 mb-4 text-center font-semibold text-[#5c3d1e] text-sm tracking-wide">
             <div>1-9</div>
             <div>10s</div>
@@ -71,7 +109,7 @@ const ParticipantDashboard = () => {
             <div>80-90</div>
           </div>
 
-          {/* Ticket Grid */}
+          {/* GRID */}
           <div className="grid grid-cols-9">
 
             {ticket.map((row, rowIndex) =>
@@ -113,6 +151,25 @@ const ParticipantDashboard = () => {
         </div>
 
       </div>
+
+      {/* LOADING */}
+      {loadingQuestion && (
+        <div className="text-center mt-6 text-[#f5e6c8]">
+          Loading question...
+        </div>
+      )}
+
+      {/* QUESTION MODAL */}
+      {selectedQuestion && (
+        <QuestionModal
+          question={selectedQuestion}
+          teamName={teamName}
+          onClose={() => setSelectedQuestion(null)}
+          onSubmissionResult={(data) => {
+            setRewardStatus(data.rewardStatus);
+          }}
+        />
+      )}
 
     </div>
   );
