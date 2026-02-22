@@ -9,6 +9,9 @@ import joinRoutes from "./routes/joinRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import setupSocket from "./sockets/socketHandler.js";
+import submissionRoutes from "./routes/submissionRoutes.js";
+import compilerRoutes from "./routes/compiler.routes.js";
+
 
 dotenv.config();
 
@@ -56,6 +59,8 @@ mongoose.connect(process.env.MONGO_URI)
 app.use("/api/join", joinRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/submit", submissionRoutes);
+app.use("/api/compiler", compilerRoutes);
 
 /* ------------------ HEALTH CHECK ------------------ */
 
