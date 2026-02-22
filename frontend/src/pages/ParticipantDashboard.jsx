@@ -8,30 +8,47 @@ const ParticipantDashboard = () => {
   const storedData = localStorage.getItem("ticketData");
   const stored = storedData ? JSON.parse(storedData) : null;
 
+  const token = stored?.token;
+
   const [ticket] = useState(stored?.numbers || []);
   const [teamName] = useState(stored?.teamName || "");
   const [drawnNumbers, setDrawnNumbers] = useState(stored?.drawnNumbers || []);
   const [activeNumber, setActiveNumber] = useState(null);
-
   const [selectedQuestion, setSelectedQuestion] = useState(null);
   const [loadingQuestion, setLoadingQuestion] = useState(false);
   const [rewardStatus, setRewardStatus] = useState(null);
+  const [submittedNumbers, setSubmittedNumbers] = useState([]);
 
-  // ---------------- SOCKET EVENTS ----------------
+  // ================= FETCH SOLVED NUMBERS =================
+  useEffect(() => {
+    const fetchSolvedNumbers = async () => {
+      try {
+        if (!token) return;
+        const res = await API.get(`/submissions/solved/${token}`);
+        setSubmittedNumbers(res.data.solvedNumbers || []);
+      } catch {
+        console.error("Failed to fetch solved numbers");
+      }
+    };
+    fetchSolvedNumbers();
+  }, [token]);
+
+  // ================= SOCKET EVENTS =================
   useEffect(() => {
 
     socket.on("numberDrawn", (num) => {
-      setDrawnNumbers(prev => [...prev, num]);
-      setActiveNumber(num);
+      setDrawnNumbers(prev =>
+        prev.includes(num) ? prev : [...prev, num]
+      );
 
-      setTimeout(() => {
-        setActiveNumber(null);
-      }, 2000);
+      setActiveNumber(num);
+      setTimeout(() => setActiveNumber(null), 2000);
     });
 
     socket.on("gameReset", () => {
       setDrawnNumbers([]);
       setRewardStatus(null);
+      setSubmittedNumbers([]);
     });
 
     return () => {
@@ -41,18 +58,17 @@ const ParticipantDashboard = () => {
 
   }, []);
 
-  // ---------------- FETCH QUESTION ----------------
+  // ================= FETCH QUESTION =================
   const handleNumberClick = async (num) => {
 
     if (!drawnNumbers.includes(num)) return;
+    if (submittedNumbers.includes(num)) return;
 
     try {
       setLoadingQuestion(true);
-
       const res = await API.get(`/questions/${num}`);
       setSelectedQuestion(res.data);
-
-    } catch (err) {
+    } catch {
       alert("Failed to load question");
     } finally {
       setLoadingQuestion(false);
@@ -60,18 +76,18 @@ const ParticipantDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#3e2f1c] via-[#2a2116] to-black p-10">
+    <div className="min-h-screen p-10 bg-[#2a2116] bg-[radial-gradient(rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:4px_4px]">
 
       {/* HEADER */}
       <div className="text-center mb-10">
-        <h1 className="text-4xl font-bold text-[#e6c79c] tracking-wide">
+        <h1 className="text-4xl font-extrabold text-[#e6c79c] tracking-widest drop-shadow-lg">
           TEAM: {teamName}
         </h1>
       </div>
 
-      {/* REWARD STATUS PANEL */}
+      {/* REWARD STATUS */}
       {rewardStatus && (
-        <div className="mb-8 text-center text-[#f5e6c8]">
+        <div className="mb-8 text-center text-[#f5e6c8] space-y-1">
           <p>Early Five: {rewardStatus.earlyFive ? "Unlocked ✅" : "—"}</p>
           <p>Corners: {rewardStatus.corners ? "Unlocked ✅" : "—"}</p>
           <p>1st Line: {rewardStatus.firstLine ? "Unlocked ✅" : "—"}</p>
@@ -85,16 +101,9 @@ const ParticipantDashboard = () => {
 
       {/* TICKET */}
       <div className="flex justify-center">
+        <div className="bg-[#f5e6c8] p-10 rounded-lg shadow-[0_20px_60px_rgba(0,0,0,0.8)] border-4 border-[#6b4f2a] relative">
 
-        <div
-          className="
-            bg-[#f5e6c8]
-            p-10
-            rounded-lg
-            shadow-[0_10px_40px_rgba(0,0,0,0.6)]
-            border-4 border-[#6b4f2a]
-          "
-        >
+          <div className="absolute inset-0 pointer-events-none opacity-20 mix-blend-multiply bg-[url('https://www.transparenttextures.com/patterns/paper-1.png')]" />
 
           {/* COLUMN LABELS */}
           <div className="grid grid-cols-9 mb-4 text-center font-semibold text-[#5c3d1e] text-sm tracking-wide">
@@ -118,38 +127,48 @@ const ParticipantDashboard = () => {
                 const isBlank = num === null;
                 const isDrawn = !isBlank && drawnNumbers.includes(num);
                 const isActive = activeNumber === num;
+                const isSubmitted = submittedNumbers.includes(num);
 
                 return (
                   <div
                     key={`${rowIndex}-${colIndex}`}
                     onClick={() => !isBlank && handleNumberClick(num)}
                     className={`
-                      h-20 w-20 flex items-center justify-center
-                      text-2xl font-extrabold
-                      border border-[#6b4f2a]
+                      relative h-20 w-20 flex items-center justify-center
+                      text-2xl font-black border border-[#6b4f2a]
                       transition-all duration-300
-                      
                       ${isBlank && "bg-transparent"}
-                      
                       ${!isBlank && !isDrawn && "bg-[#fdf6e3] text-[#4b3214]"}
-                      
                       ${isDrawn && "bg-[#d2a86a] text-[#2a1c0f]"}
-                      
+                      ${isSubmitted && "bg-[#c39a5c] shadow-[inset_0_0_12px_rgba(0,0,0,0.35)]"}
                       ${isActive && "scale-110 bg-[#c68b3c]"}
-                      
-                      ${!isBlank ? "cursor-pointer hover:bg-[#e6c79c]" : ""}
+                      ${!isBlank && !isSubmitted ? "cursor-pointer hover:bg-[#e6c79c]" : ""}
                     `}
                   >
-                    {!isBlank && num}
+                    {!isBlank && (
+                      <>
+                        <span className={`relative z-10 ${isSubmitted ? "opacity-80" : ""}`}>
+                          {num}
+                        </span>
+
+                        {isSubmitted && (
+                          <>
+                            {/* LINE 1 */}
+                            <div className="absolute w-full h-[3px] bg-[#7a0f0f] rotate-45 animate-drawX shadow-[0_0_4px_rgba(122,15,15,0.6)]" />
+
+                            {/* LINE 2 */}
+                            <div className="absolute w-full h-[3px] bg-[#7a0f0f] -rotate-45 animate-drawX shadow-[0_0_4px_rgba(122,15,15,0.6)]" />
+                          </>
+                        )}
+                      </>
+                    )}
                   </div>
                 );
               })
             )}
 
           </div>
-
         </div>
-
       </div>
 
       {/* LOADING */}
@@ -163,13 +182,37 @@ const ParticipantDashboard = () => {
       {selectedQuestion && (
         <QuestionModal
           question={selectedQuestion}
-          teamName={teamName}
+          token={token}
           onClose={() => setSelectedQuestion(null)}
           onSubmissionResult={(data) => {
+
             setRewardStatus(data.rewardStatus);
+
+            if (data.isCorrect && data.number) {
+              setSubmittedNumbers(prev =>
+                prev.includes(data.number)
+                  ? prev
+                  : [...prev, data.number]
+              );
+            }
+
+            setSelectedQuestion(null);
           }}
         />
       )}
+
+      {/* ANIMATION */}
+      <style>
+        {`
+          @keyframes drawX {
+            0% { transform: scaleX(0) rotate(var(--rotate)); opacity: 0; }
+            100% { transform: scaleX(1) rotate(var(--rotate)); opacity: 1; }
+          }
+          .animate-drawX {
+            animation: drawX 0.3s ease-out forwards;
+          }
+        `}
+      </style>
 
     </div>
   );

@@ -1,67 +1,45 @@
-import { runCodeWithOneCompiler } from "../utils/oneCompiler.js";
+import express from "express";
+import Question from "../models/Question.js";
+
+const router = express.Router();
 
 /**
- * Normalize output safely for comparison
+ * GET QUESTION BY NUMBER
+ * Participant clicks drawn number
  */
-const normalizeOutput = (text) => {
-  if (!text) return "";
-  return text
-    .replace(/\r\n/g, "\n")
-    .split("\n")
-    .map(line => line.trimEnd())
-    .join("\n")
-    .trim();
-};
+router.get("/:number", async (req, res) => {
+  try {
 
-export const validateAnswer = async (question, answer, language) => {
+    const number = Number(req.params.number);
 
-  // ================= MCQ =================
-  if (question.type === "MCQ") {
-    return question.correctAnswer === answer;
-  }
-
-  // ================= CASE =================
-  if (question.type === "CASE") {
-    return question.correctAnswer.trim().toLowerCase() ===
-      answer.trim().toLowerCase();
-  }
-
-  // ================= CODING =================
-  if (question.type === "CODING") {
-
-    if (!language) return false;
-
-    const allCases = [
-      ...(question.testCases || []),
-      ...(question.hiddenTestCases || [])
-    ];
-
-    if (allCases.length === 0) return false;
-
-    const inputs = allCases.map(tc => tc.input);
-
-    const result = await runCodeWithOneCompiler(
-      answer,
-      language,
-      inputs
-    );
-
-    const executions = Array.isArray(result) ? result : [result];
-
-    for (let i = 0; i < allCases.length; i++) {
-
-      const userOutput = normalizeOutput(executions[i]?.stdout || "");
-      const expectedOutput = normalizeOutput(
-        allCases[i].expectedOutput
-      );
-
-      if (userOutput !== expectedOutput) {
-        return false;
-      }
+    if (isNaN(number) || number < 1 || number > 90) {
+      return res.status(400).json({ message: "Invalid number" });
     }
 
-    return true;
-  }
+    const question = await Question.findOne({ number }).lean();
 
-  return false;
-};
+    if (!question) {
+      return res.status(404).json({ message: "Question not found" });
+    }
+
+    // 🔥 DO NOT SEND hiddenTestCases
+    const sanitized = {
+      number: question.number,
+      type: question.type,
+      questionText: question.questionText,
+      options: question.options || [],
+      testCases:
+        question.type === "CODING"
+          ? question.testCases || []
+          : undefined
+    };
+
+    res.json(sanitized);
+
+  } catch (err) {
+    console.error("Question fetch error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+export default router;

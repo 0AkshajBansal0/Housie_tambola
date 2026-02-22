@@ -1,13 +1,30 @@
 import mongoose from "mongoose";
 
 const submissionSchema = new mongoose.Schema({
-  teamCode: String,
+  token: {
+    type: String,
+    required: true
+  },
 
-  number: Number,
+  ticketId: {
+    type: String,
+    required: true
+  },
 
-  answer: String,
+  number: {
+    type: Number,
+    required: true
+  },
 
-  isCorrect: Boolean,
+  answer: {
+    type: String,
+    required: true
+  },
+
+  isCorrect: {
+    type: Boolean,
+    required: true
+  },
 
   submittedAt: {
     type: Date,
@@ -15,5 +32,8 @@ const submissionSchema = new mongoose.Schema({
   }
 
 }, { timestamps: true });
+
+// Prevent duplicate submission per ticket per number
+submissionSchema.index({ ticketId: 1, number: 1 });
 
 export default mongoose.model("Submission", submissionSchema);

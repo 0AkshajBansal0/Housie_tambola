@@ -4,7 +4,7 @@ import CodingQuestion from "./CodingQuestion";
 
 const QuestionModal = ({
   question,
-  teamName,
+  token,
   onClose,
   onSubmissionResult
 }) => {
@@ -24,7 +24,7 @@ const QuestionModal = ({
       {question.type === "MCQ" && (
         <MCQQuestion
           question={question}
-          teamName={teamName}
+          token={token}
           onSubmissionResult={onSubmissionResult}
         />
       )}
@@ -32,7 +32,7 @@ const QuestionModal = ({
       {question.type === "CASE" && (
         <CaseQuestion
           question={question}
-          teamName={teamName}
+          token={token}
           onSubmissionResult={onSubmissionResult}
         />
       )}
@@ -40,7 +40,7 @@ const QuestionModal = ({
       {question.type === "CODING" && (
         <CodingQuestion
           question={question}
-          teamName={teamName}
+          token={token}
           onSubmissionResult={onSubmissionResult}
         />
       )}
