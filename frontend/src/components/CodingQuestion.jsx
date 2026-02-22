@@ -2,19 +2,27 @@ import { useState } from "react";
 import Editor from "@monaco-editor/react";
 import API from "../services/api";
 
-const CodingQuestion = ({ question, teamName, onSubmissionResult }) => {
+const CodingQuestion = ({ question, token, onSubmissionResult }) => {
 
   const [language, setLanguage] = useState("python");
   const [code, setCode] = useState("// Write your code here");
+
   const [runResults, setRunResults] = useState([]);
+  const [compileError, setCompileError] = useState(null);
+
   const [loadingRun, setLoadingRun] = useState(false);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
+
   const [finalResult, setFinalResult] = useState(null);
 
+  // =========================
+  // RUN CODE (VISIBLE + HIDDEN)
+  // =========================
   const handleRun = async () => {
     try {
       setLoadingRun(true);
       setRunResults([]);
+      setCompileError(null);
       setFinalResult(null);
 
       const res = await API.post("/compiler/run", {
@@ -23,7 +31,12 @@ const CodingQuestion = ({ question, teamName, onSubmissionResult }) => {
         number: question.number
       });
 
-      setRunResults(res.data.results);
+      if (res.data.compileError) {
+        setCompileError(res.data.compileError);
+        return;
+      }
+
+      setRunResults(res.data.results || []);
 
     } catch {
       alert("Execution failed");
@@ -32,16 +45,38 @@ const CodingQuestion = ({ question, teamName, onSubmissionResult }) => {
     }
   };
 
+  // =========================
+  // SUBMIT CODE
+  // =========================
   const handleSubmit = async () => {
+
+    if (!token) {
+      alert("Session expired. Please re-login.");
+      return;
+    }
+
+    if (!code.trim()) {
+      alert("Code cannot be empty.");
+      return;
+    }
+
     try {
       setLoadingSubmit(true);
+      setCompileError(null);
+      setFinalResult(null);
 
       const res = await API.post("/submit", {
-        teamCode: teamName,
+        token,
         number: question.number,
         answer: code,
         language
       });
+
+      if (res.data.compileError) {
+        setCompileError(res.data.compileError);
+        setFinalResult(false);
+        return;
+      }
 
       setFinalResult(res.data.isCorrect);
       onSubmissionResult(res.data);
@@ -68,19 +103,19 @@ const CodingQuestion = ({ question, teamName, onSubmissionResult }) => {
 
         {question.testCases?.map((tc, i) => (
           <div key={i} className="mb-4 p-3 bg-[#1f2937] rounded">
-            <p className="text-sm text-gray-400">Input</p>
-            <pre className="mb-2 whitespace-pre-wrap">{tc.input}</pre>
+            <div className="text-gray-400 text-sm">Input</div>
+            <pre className="whitespace-pre-wrap">{tc.input}</pre>
 
-            <p className="text-sm text-gray-400">Expected</p>
+            <div className="text-gray-400 text-sm mt-2">Expected</div>
             <pre className="whitespace-pre-wrap">{tc.expectedOutput}</pre>
           </div>
         ))}
       </div>
 
-      {/* CENTER PANEL (EDITOR) */}
+      {/* CENTER PANEL */}
       <div className="w-[50%] flex flex-col">
 
-        <div className="flex justify-between items-center px-6 py-3 border-b border-gray-700 bg-[#0f172a]">
+        <div className="flex justify-between px-6 py-3 border-b border-gray-700">
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
@@ -122,40 +157,71 @@ const CodingQuestion = ({ question, teamName, onSubmissionResult }) => {
         </div>
       </div>
 
-      {/* RIGHT PANEL (OUTPUT) */}
+      {/* RIGHT PANEL */}
       <div className="w-[25%] p-6 overflow-y-auto border-l border-gray-700 bg-black">
 
         <h3 className="text-xl font-bold mb-4">Output</h3>
 
-        {runResults.length === 0 && (
-          <p className="text-gray-400">Run to see results</p>
+        {(loadingRun || loadingSubmit) && (
+          <div className="text-yellow-400 animate-pulse mb-4">
+            Running test cases...
+          </div>
         )}
 
-        {runResults.map((r, i) => (
-          <div key={i} className="mb-4 p-3 border-b border-gray-700">
-            <p className={r.passed ? "text-green-400" : "text-red-400"}>
-              Test Case {i + 1}: {r.passed ? "Passed" : "Failed"}
-            </p>
+        {compileError && (
+          <div className="bg-red-900 p-4 rounded mb-4">
+            <div className="font-bold text-red-400 mb-2">
+              Compilation Error
+            </div>
             <pre className="text-sm whitespace-pre-wrap">
-Input:
-{r.input}
-
-Your Output:
-{r.output}
-
-Expected:
-{r.expected}
+              {compileError}
             </pre>
           </div>
-        ))}
+        )}
+
+        {runResults.map((r, i) => {
+          const visibleCount = question.testCases?.length || 0;
+          const isHidden = r.type === "hidden";
+
+          return (
+            <div key={i} className="mb-6 p-4 border border-gray-700 rounded">
+              <div className={r.passed ? "text-green-400" : "text-red-400"}>
+                {isHidden
+                  ? `Hidden Test Case ${i + 1 - visibleCount}`
+                  : `Test Case ${i + 1}`}
+                {r.passed ? " ✔ Passed" : " ✖ Failed"}
+              </div>
+
+              {!isHidden && (
+                <div className="mt-2 text-sm space-y-2">
+                  <div>
+                    <div className="text-gray-400">Input:</div>
+                    <pre>{r.input}</pre>
+                  </div>
+
+                  <div>
+                    <div className="text-gray-400">Your Output:</div>
+                    <pre>{r.output}</pre>
+                  </div>
+
+                  <div>
+                    <div className="text-gray-400">Expected:</div>
+                    <pre>{r.expected}</pre>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {finalResult !== null && (
           <div className="mt-6 text-lg font-bold">
             {finalResult
-              ? "All Test Cases Passed (Including Hidden) ✅"
-              : "Hidden Test Cases Failed ❌"}
+              ? "All Test Cases Passed ✅"
+              : "Some Test Cases Failed ❌"}
           </div>
         )}
+
       </div>
 
     </div>

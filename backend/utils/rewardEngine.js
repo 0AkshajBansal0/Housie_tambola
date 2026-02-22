@@ -7,7 +7,7 @@ export const calculateRewards = async (teamCode) => {
   const reward = await Reward.findOneAndUpdate(
     { teamCode },
     {},
-    { upsert: true, new: true }
+    { upsert: true, returnDocument: "after" }
   );
 
   const submissions = await Submission.find({

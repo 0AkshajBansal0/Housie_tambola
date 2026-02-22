@@ -1,5 +1,5 @@
 import Question from "../models/Question.js";
-import { runCodeWithOneCompiler } from "../utils/oneCompiler.js";
+import { runJudgeBatch } from "../utils/judge0.js";
 
 export const runCode = async (req, res) => {
 
@@ -13,25 +13,60 @@ export const runCode = async (req, res) => {
       return res.status(404).json({ message: "Question not found" });
     }
 
-    const inputs = question.testCases.map(tc => tc.input);
 
-    const result = await runCodeWithOneCompiler(
-      code,
-      language,
-      inputs
-    );
+console.log("Question Number:", number);
+console.log("Visible length:", question.testCases?.length);
+console.log("Hidden length:", question.hiddenTestCases?.length);
 
-    const results = result.map((r, i) => ({
-      input: r.stdin,
-      expected: question.testCases[i].expectedOutput,
-      output: r.stdout?.trim(),
-      passed: r.stdout?.trim() === question.testCases[i].expectedOutput.trim()
-    }));
+    const visible = question.testCases || [];
+    const hidden = question.hiddenTestCases || [];
 
-    res.json({ results });
+    const allCases = [...visible, ...hidden];
+
+    const judgeResults = await runJudgeBatch(code, language, allCases);
+
+    let compileError = null;
+
+    const formatted = judgeResults.map((r, i) => {
+
+      const isPassed = r.status?.id === 3;
+
+      const stdout = r.stdout
+        ? Buffer.from(r.stdout, "base64").toString().trim()
+        : "";
+
+      const stderr = r.stderr
+        ? Buffer.from(r.stderr, "base64").toString()
+        : "";
+
+      if (r.status?.id === 6) {
+        compileError = stderr || r.status.description;
+      }
+
+      if (i < visible.length) {
+        return {
+          type: "visible",
+          passed: isPassed,
+          input: visible[i].input,
+          expected: visible[i].expectedOutput,
+          output: stdout,
+          error: stderr
+        };
+      } else {
+        return {
+          type: "hidden",
+          passed: isPassed
+        };
+      }
+    });
+
+    res.json({
+      results: formatted,
+      compileError
+    });
 
   } catch (err) {
-    console.error("Compiler Error:", err.response?.data || err.message);
+    console.error("Run Error:", err);
     res.status(500).json({ message: "Execution failed" });
   }
 };
