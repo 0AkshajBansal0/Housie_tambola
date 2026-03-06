@@ -65,7 +65,7 @@ const CodingQuestion = ({ question, token, onSubmissionResult }) => {
       setCompileError(null);
       setFinalResult(null);
 
-      const res = await API.post("/submit", {
+      const res = await API.post("/submissions", {
         token,
         number: question.number,
         answer: code,

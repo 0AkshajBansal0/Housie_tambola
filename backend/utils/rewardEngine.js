@@ -4,60 +4,92 @@ import Ticket from "../models/Ticket.js";
 
 export const calculateRewards = async (teamCode) => {
 
+  // teamCode = ticketId
+  const ticketId = teamCode;
+
   const reward = await Reward.findOneAndUpdate(
-    { teamCode },
+    { teamCode: ticketId },
     {},
-    { upsert: true, returnDocument: "after" }
+    { upsert: true, new: true }
   );
 
-  const submissions = await Submission.find({
-    teamCode,
-    isCorrect: true
-  });
+  /* ================= FETCH TICKET ================= */
 
-  const correctNumbers = submissions.map(s => s.number);
-
-  const ticket = await Ticket.findOne({ teamName: teamCode });
+  const ticket = await Ticket.findOne({ ticketId });
 
   if (!ticket) return reward;
 
-  const flatTicket = ticket.numbers.flat().filter(n => n !== null);
+  /* ================= FETCH CORRECT SUBMISSIONS ================= */
 
-  // Early Five
+  const submissions = await Submission.find({
+    ticketId,
+    isCorrect: true
+  });
+
+  // normalize numbers
+  const correctNumbers = submissions.map(s => Number(s.number));
+
+  const flatTicket = ticket.numbers
+    .flat()
+    .filter(n => n !== null)
+    .map(n => Number(n));
+
+  /* ================= EARLY FIVE ================= */
+
   if (correctNumbers.length >= 5 && !reward.earlyFive) {
     reward.earlyFive = true;
   }
 
-  // Corners
-  const firstRow = ticket.numbers[0].filter(n => n !== null);
-  const lastRow = ticket.numbers[2].filter(n => n !== null);
+  /* ================= CORNERS ================= */
 
-  const corners = [
-    firstRow[0],
-    firstRow[firstRow.length - 1],
-    lastRow[0],
-    lastRow[lastRow.length - 1]
-  ];
+  const firstRow = ticket.numbers[0];
+  const lastRow = ticket.numbers[2];
 
-  if (corners.every(n => correctNumbers.includes(n))) {
+  const topLeft = Number(firstRow.find(n => n !== null));
+  const topRight = Number([...firstRow].reverse().find(n => n !== null));
+  const bottomLeft = Number(lastRow.find(n => n !== null));
+  const bottomRight = Number([...lastRow].reverse().find(n => n !== null));
+
+  const corners = [topLeft, topRight, bottomLeft, bottomRight];
+
+  if (
+    corners.every(n => correctNumbers.includes(n)) &&
+    !reward.corners
+  ) {
     reward.corners = true;
   }
 
-  // Lines
+  /* ================= LINES ================= */
+
   const checkLine = (rowIndex) => {
-    const rowNums = ticket.numbers[rowIndex].filter(n => n !== null);
-    return rowNums.every(n => correctNumbers.includes(n));
+
+    const rowNums = ticket.numbers[rowIndex]
+      .filter(n => n !== null)
+      .map(n => Number(n));
+
+    const solved = rowNums.filter(n => correctNumbers.includes(n));
+    return solved.length === rowNums.length;
   };
 
-  if (checkLine(0)) reward.firstLine = true;
-  if (checkLine(1)) reward.secondLine = true;
-  if (checkLine(2)) reward.thirdLine = true;
+  if (checkLine(0) && !reward.firstLine) {
+    reward.firstLine = true;
+  }
 
-  // Full House (Top 3 only)
-  const fullSolved = flatTicket.every(n => correctNumbers.includes(n));
+  if (checkLine(1) && !reward.secondLine) {
+    reward.secondLine = true;
+  }
+
+  if (checkLine(2) && !reward.thirdLine) {
+    reward.thirdLine = true;
+  }
+
+  /* ================= FULL HOUSE ================= */
+
+  const fullSolved = flatTicket.every(n =>
+    correctNumbers.includes(n)
+  );
 
   if (fullSolved && reward.fullHouseRank === 0) {
-
     const fullHouseCount = await Reward.countDocuments({
       fullHouseRank: { $gt: 0 }
     });
@@ -66,8 +98,6 @@ export const calculateRewards = async (teamCode) => {
       reward.fullHouseRank = fullHouseCount + 1;
     }
   }
-
   await reward.save();
-
   return reward;
 };
