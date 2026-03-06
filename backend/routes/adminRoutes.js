@@ -1,8 +1,84 @@
 import express from "express";
 import Draw from "../models/Draw.js";
 import protectAdmin from "../middleware/authMiddleware.js";
+import Ticket from "../models/Ticket.js";
+import Submission from "../models/Submission.js";
+import Reward from "../models/Reward.js";
 
 const router = express.Router();
+
+
+/* =========================
+   GET ACTIVE TEAMS
+========================= */
+router.get("/teams", protectAdmin, async (req, res) => {
+  try {
+
+    const tickets = await Ticket.find()
+      .select("teamName ticketId token numbers isAssigned");
+
+    const submissions = await Submission.find({
+      isCorrect: true
+    }).select("ticketId number");
+
+    // group solved numbers by ticket
+    const solvedMap = {};
+
+    submissions.forEach(s => {
+
+      if (!solvedMap[s.ticketId]) {
+        solvedMap[s.ticketId] = [];
+      }
+
+      solvedMap[s.ticketId].push(s.number);
+
+    });
+
+    const result = tickets.map(ticket => ({
+      ...ticket.toObject(),
+      solvedNumbers: solvedMap[ticket.ticketId] || []
+    }));
+
+    res.json(result);
+
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch teams" });
+  }
+});
+
+
+/* =========================
+   GET SUBMISSIONS
+========================= */
+router.get("/submissions", protectAdmin, async (req, res) => {
+  try {
+
+    const submissions = await Submission.find()
+      .sort({ createdAt: -1 })
+      .limit(200);
+
+    res.json(submissions);
+
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch submissions" });
+  }
+});
+
+
+/* =========================
+   GET DRAW LOGS
+========================= */
+router.get("/logs", protectAdmin, async (req, res) => {
+  try {
+
+    const draws = await Draw.find().sort({ drawnAt: -1 });
+
+    res.json(draws);
+
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch logs" });
+  }
+});
 
 /* DRAW NUMBER */
 router.post("/draw", protectAdmin, async (req, res) => {
