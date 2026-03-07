@@ -6,6 +6,10 @@ import AdminLogin from "./pages/AdminLogin";
 import AdminLayout from "./layouts/AdminLayout";
 import AdminHome from "./pages/AdminHome";
 
+import TeamsPage from "./pages/TeamsPage";
+import SubmissionsPage from "./pages/SubmissionsPage";
+import LogsPage from "./pages/LogsPage";
+
 import JoinPage from "./pages/JoinPage";
 import ParticipantDashboard from "./pages/ParticipantDashboard";
 
@@ -29,9 +33,10 @@ function App() {
 
   return (
     <BrowserRouter>
+
       <Routes>
 
-        {/* ========== ADMIN LOGIN ========== */}
+        {/* ADMIN LOGIN */}
         <Route
           path="/admin/login"
           element={
@@ -41,26 +46,32 @@ function App() {
           }
         />
 
-        {/* ========== ADMIN PROTECTED ROUTES ========== */}
+        {/* ADMIN PANEL */}
         <Route
-          path="/admin/*"
+          path="/admin"
           element={
             isAdminLoggedIn
-              ? <AdminLayout setIsLoggedIn={setIsAdminLoggedIn} />
+              ? <AdminLayout setIsLoggedIn={setIsAdminLoggedIn}/>
               : <Navigate to="/admin/login" replace />
           }
         >
-          <Route index element={<AdminHome />} />
+
+          <Route index element={<AdminHome/>}/>
+          <Route path="teams" element={<TeamsPage/>}/>
+          <Route path="submissions" element={<SubmissionsPage/>}/>
+          <Route path="logs" element={<LogsPage/>}/>
+
         </Route>
 
-        {/* ========== PARTICIPANT ROUTES ========== */}
-        <Route path="/join/:token" element={<JoinPage />} />
-        <Route path="/dashboard" element={<ParticipantDashboard />} />
+        {/* PARTICIPANT */}
+        <Route path="/join/:token" element={<JoinPage/>}/>
+        <Route path="/dashboard" element={<ParticipantDashboard/>}/>
 
-        {/* ========== DEFAULT ========== */}
+        {/* DEFAULT */}
         <Route path="*" element={<Navigate to="/admin/login" replace />} />
 
       </Routes>
+
     </BrowserRouter>
   );
 }
