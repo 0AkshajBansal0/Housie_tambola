@@ -1,12 +1,16 @@
 import Draw from "../models/Draw.js";
 
+let ioInstance;
+
+export const getIO = () => ioInstance;
+
 const setupSocket = (io) => {
+  ioInstance = io;
 
   io.on("connection", async (socket) => {
     console.log("Socket connected:", socket.id);
 
     try {
-      // Send full draw history immediately on connection
       const draws = await Draw.find().sort({ drawnAt: 1 });
       const drawnNumbers = draws.map(d => d.number);
 
@@ -16,7 +20,6 @@ const setupSocket = (io) => {
       console.error("Error sending initial draw history:", error);
     }
 
-    // Optional: Listen for client readiness
     socket.on("clientReady", () => {
       console.log("Client ready:", socket.id);
     });
@@ -25,7 +28,6 @@ const setupSocket = (io) => {
       console.log("Socket disconnected:", socket.id);
     });
   });
-
 };
 
 export default setupSocket;
