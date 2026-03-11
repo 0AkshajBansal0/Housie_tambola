@@ -34,15 +34,23 @@ const AdminLayout = ({ setIsLoggedIn }) => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white">
+    <div
+      className="min-h-screen text-white bg-cover bg-center bg-no-repeat bg-fixed"
+      style={{
+        backgroundImage: "url('/main_bg.jpg')"
+      }}
+    >
       <Navbar setIsLoggedIn={setIsLoggedIn} />
-      <div className="p-6">
-        <Outlet context={{
-          drawnNumbers,
-          latestNumber,
-          setDrawnNumbers,
-          setLatestNumber
-        }} />
+
+      <div className="p-6 backdrop-blur-[2px] bg-black/40 min-h-screen">
+        <Outlet
+          context={{
+            drawnNumbers,
+            latestNumber,
+            setDrawnNumbers,
+            setLatestNumber
+          }}
+        />
       </div>
     </div>
   );

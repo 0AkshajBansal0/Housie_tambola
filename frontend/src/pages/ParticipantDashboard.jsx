@@ -80,8 +80,8 @@ const ParticipantDashboard = () => {
 
   useEffect(() => {
 
-    socket.emit("clientReady"); 
-    
+    socket.emit("clientReady");
+
     socket.on("initialDrawnNumbers", (numbers) => {
       setDrawnNumbers(numbers || []);
     });
@@ -107,7 +107,7 @@ const ParticipantDashboard = () => {
 
       setEvents(prev => [
         event,
-        ...prev.slice(0,10)
+        ...prev.slice(0, 10)
       ]);
 
     });
@@ -211,15 +211,18 @@ const ParticipantDashboard = () => {
 
   return (
 
-    <div className="min-h-screen p-10 bg-[#2a2116] bg-[radial-gradient(rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:4px_4px]">
-
+    <div
+      className="min-h-screen p-10 bg-cover bg-center bg-no-repeat bg-fixed"
+      style={{ backgroundImage: "url('/user_bg.jpg')" }}
+    >
+      
       {/* CONFETTI */}
       {confetti && (
         <Confetti
           numberOfPieces={400}
           recycle={false}
           gravity={0.3}
-          colors={["#FFD700","#FFC107","#FFE082","#FFF176"]}
+          colors={["#FFD700", "#FFC107", "#FFE082", "#FFF176"]}
         />
       )}
 
@@ -263,12 +266,12 @@ const ParticipantDashboard = () => {
             <div className="space-y-4">
 
               {[
-                {label:"Early Five", key:"earlyFive"},
-                {label:"Corners", key:"corners"},
-                {label:"First Line", key:"firstLine"},
-                {label:"Second Line", key:"secondLine"},
-                {label:"Third Line", key:"thirdLine"},
-                {label:"Full House", key:"fullHouseRank"}
+                { label: "Early Five", key: "earlyFive" },
+                { label: "Corners", key: "corners" },
+                { label: "First Line", key: "firstLine" },
+                { label: "Second Line", key: "secondLine" },
+                { label: "Third Line", key: "thirdLine" },
+                { label: "Full House", key: "fullHouseRank" }
               ].map((item) => {
 
                 const done =
@@ -384,7 +387,7 @@ const ParticipantDashboard = () => {
 
             <div className="space-y-3 max-h-[400px] overflow-y-auto">
 
-              {events.map((e,i)=>(
+              {events.map((e, i) => (
                 <div
                   key={i}
                   className="p-3 bg-[#2a1c0f] rounded border border-[#6b4f2a]"
